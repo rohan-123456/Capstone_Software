@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bitcoin Analytics | Predictive Model</title>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Tailwind Custom Configuration for Premium Dark Theme -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        bgMain: '#0B0D10',
+                        bgSec: '#111419',
+                        surface: '#151922',
+                        elevated: '#1A1F29',
+                        textPri: '#F5F7FA',
+                        textSec: '#9AA3B2',
+                        borderSubtle: '#252B36',
+                        accent: '#6366F1', // Indigo
+                        accentCyan: '#22D3EE',
+                    },
+                    boxShadow: {
+                        'glow': '0 0 20px rgba(99, 102, 241, 0.15)',
+                        'surface': '0 4px 20px rgba(0, 0, 0, 0.4)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Subtle atmospheric background gradient */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100vw;
+            height: 500px;
+            background: radial-gradient(circle, rgba(99,102,241,0.07) 0%, rgba(11,13,16,0) 70%);
+            z-index: -1;
+            pointer-events: none;
+        }
+        
+        /* Custom scrollbar for a polished look */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0B0D10; }
+        ::-webkit-scrollbar-thumb { background: #252B36; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #9AA3B2; }
+    </style>
+</head>
+<body class="bg-bgMain text-textPri font-sans antialiased min-h-screen relative selection:bg-accent/30 selection:text-textPri">
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-bgMain/90 backdrop-blur-sm transition-opacity duration-500">
+        <div class="w-12 h-12 border-2 border-borderSubtle border-t-accent rounded-full animate-spin mb-4"></div>
+        <p class="text-textSec text-sm font-medium tracking-wide uppercase animate-pulse">Initializing Model & Fetching Data...</p>
+    </div>
+
+    <!-- Top Navigation -->
+    <nav class="sticky top-0 z-40 bg-bgMain/80 backdrop-blur-md border-b border-borderSubtle">
+        <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-purple-600 flex items-center justify-center shadow-glow">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                </div>
+                <span class="font-semibold tracking-tight text-lg">Nexus<span class="text-textSec font-light">Analytics</span></span>
+            </div>
+            <div class="flex items-center space-x-2">
+                <span class="flex h-2.5 w-2.5 relative">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                </span>
+                <span class="text-xs font-medium text-textSec uppercase tracking-wider">Live Server</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        
+        <!-- Page Header -->
+        <header class="mb-10">
+            <h1 class="text-3xl sm:text-4xl font-bold tracking-tight mb-2">Bitcoin Price Forecaster</h1>
+            <p class="text-textSec text-lg font-light max-w-2xl">Advanced ARIMA model analysis evaluating historical trends to generate a 10-day predictive trajectory.</p>
+        </header>
+
+        <!-- Metrics Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+            <!-- MAE Card -->
+            <div class="bg-surface border border-borderSubtle rounded-2xl p-6 shadow-surface hover:border-accent/40 transition-colors duration-300 relative overflow-hidden group">
+                <div class="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity duration-300">
+                    <svg class="w-16 h-16 text-accent" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"></path></svg>
+                </div>
+                <h3 class="text-xs font-semibold text-textSec uppercase tracking-wider mb-2">Mean Absolute Error (MAE)</h3>
+                <div class="flex items-baseline space-x-2">
+                    <p id="mae-metric" class="text-3xl sm:text-4xl font-bold text-textPri">--</p>
+                    <span class="text-sm font-medium text-textSec">Avg. deviation</span>
+                </div>
+            </div>
+            
+            <!-- RMSE Card -->
+            <div class="bg-surface border border-borderSubtle rounded-2xl p-6 shadow-surface hover:border-accentCyan/40 transition-colors duration-300 relative overflow-hidden group">
+                <div class="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity duration-300">
+                    <svg class="w-16 h-16 text-accentCyan" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 9h-2V7h-2v5H6v-2H4v6h16v-6h-2v2h-2v-5h-2v5z"></path></svg>
+                </div>
+                <h3 class="text-xs font-semibold text-textSec uppercase tracking-wider mb-2">Root Mean Squared Error</h3>
+                <div class="flex items-baseline space-x-2">
+                    <p id="rmse-metric" class="text-3xl sm:text-4xl font-bold text-textPri">--</p>
+                    <span class="text-sm font-medium text-textSec">Standard dev.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            <!-- Chart 1: Historical & MA (Spans full width on desktop) -->
+            <div class="lg:col-span-2 bg-surface border border-borderSubtle rounded-2xl p-6 shadow-surface">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 class="text-lg font-semibold text-textPri">Historical Data & Moving Average</h2>
+                        <p class="text-sm text-textSec mt-1">30-day moving average overlay against actual asset price.</p>
+                    </div>
+                    <div class="hidden sm:flex space-x-3">
+                        <span class="flex items-center text-xs text-textSec"><span class="w-3 h-3 rounded-full bg-accentCyan mr-2"></span>Price</span>
+                        <span class="flex items-center text-xs text-textSec"><span class="w-3 h-3 rounded-full bg-accent mr-2"></span>MA-30</span>
+                    </div>
+                </div>
+                <div class="relative w-full h-[300px] sm:h-[400px]">
+                    <canvas id="historicalChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Chart 2: Test Data vs Predictions -->
+            <div class="bg-surface border border-borderSubtle rounded-2xl p-6 shadow-surface">
+                <div class="mb-6">
+                    <h2 class="text-lg font-semibold text-textPri">Model Evaluation</h2>
+                    <p class="text-sm text-textSec mt-1">Testing set actuals vs ARIMA predictions.</p>
+                </div>
+                <div class="relative w-full h-[250px] sm:h-[300px]">
+                    <canvas id="testChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Chart 3: Future Forecast -->
+            <div class="bg-surface border border-borderSubtle rounded-2xl p-6 shadow-surface relative overflow-hidden group">
+                <!-- Subtle glow effect behind the forecast chart -->
+                <div class="absolute -bottom-10 -right-10 w-64 h-64 bg-accent/10 rounded-full blur-3xl pointer-events-none transition-opacity duration-500 opacity-50 group-hover:opacity-100"></div>
+                
+                <div class="mb-6 relative z-10">
+                    <h2 class="text-lg font-semibold text-textPri">10-Day Future Forecast</h2>
+                    <p class="text-sm text-textSec mt-1">Projected price trajectory based on current model.</p>
+                </div>
+                <div class="relative w-full h-[250px] sm:h-[300px] z-10">
+                    <canvas id="forecastChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Set premium dark mode defaults for Chart.js
+        Chart.defaults.color = '#9AA3B2';
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        Chart.defaults.plugins.tooltip.backgroundColor = '#1A1F29';
+        Chart.defaults.plugins.tooltip.titleColor = '#F5F7FA';
+        Chart.defaults.plugins.tooltip.bodyColor = '#F5F7FA';
+        Chart.defaults.plugins.tooltip.borderColor = '#252B36';
+        Chart.defaults.plugins.tooltip.borderWidth = 1;
+        Chart.defaults.plugins.tooltip.padding = 12;
+        Chart.defaults.plugins.tooltip.cornerRadius = 8;
+        Chart.defaults.plugins.tooltip.displayColors = true;
+
+        const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false } // Custom legends are built into the HTML or rely on tooltips for cleaner look
+            },
+            scales: {
+                x: {
+                    grid: { color: '#252B36', drawBorder: false, tickLength: 0 },
+                    ticks: { maxTicksLimit: 8, padding: 10 }
+                },
+                y: {
+                    grid: { color: '#252B36', drawBorder: false, tickLength: 0 },
+                    ticks: { padding: 10, callback: function(value) { return '$' + value.toLocaleString(); } }
+                }
+            }
+        };
+
+        async function fetchAndRenderData() {
+            try {
+                // Fetch data from Flask backend
+                const response = await fetch('http://localhost:5000/api/bitcoin-data');
+                const data = await response.json();
+                
+                if(data.error) {
+                    alert("Backend Error: " + data.error);
+                    document.getElementById('loading-overlay').innerHTML = `<p class="text-red-400 font-semibold text-lg">Error: ${data.error}</p>`;
+                    return;
+                }
+
+                // Hide loading overlay smoothly
+                const loader = document.getElementById('loading-overlay');
+                loader.classList.add('opacity-0', 'pointer-events-none');
+                setTimeout(() => loader.style.display = 'none', 500);
+
+                // Render Metrics
+                document.getElementById('mae-metric').innerText = data.metrics.mae.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+                document.getElementById('rmse-metric').innerText = data.metrics.rmse.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+
+                // Create Gradients
+                const ctxHist = document.getElementById('historicalChart').getContext('2d');
+                const gradHist = ctxHist.createLinearGradient(0, 0, 0, 400);
+                gradHist.addColorStop(0, 'rgba(34, 211, 238, 0.15)');
+                gradHist.addColorStop(1, 'rgba(34, 211, 238, 0.01)');
+
+                const ctxFore = document.getElementById('forecastChart').getContext('2d');
+                const gradFore = ctxFore.createLinearGradient(0, 0, 0, 300);
+                gradFore.addColorStop(0, 'rgba(99, 102, 241, 0.3)');
+                gradFore.addColorStop(1, 'rgba(99, 102, 241, 0.01)');
+
+                // 1. Historical Chart
+                new Chart(ctxHist, {
+                    type: 'line',
+                    data: {
+                        labels: data.historical.dates,
+                        datasets: [
+                            { 
+                                label: 'Bitcoin Price', 
+                                data: data.historical.prices, 
+                                borderColor: '#22D3EE', // Cyan
+                                backgroundColor: gradHist,
+                                borderWidth: 2, 
+                                pointRadius: 0,
+                                pointHoverRadius: 6,
+                                fill: true,
+                                tension: 0.1
+                            },
+                            { 
+                                label: '30-Day MA', 
+                                data: data.historical.ma_30, 
+                                borderColor: '#6366F1', // Indigo
+                                borderWidth: 2, 
+                                pointRadius: 0, 
+                                borderDash: [5, 5],
+                                tension: 0.1
+                            }
+                        ]
+                    },
+                    options: commonOptions
+                });
+
+                // 2. Test Data vs Predicted
+                new Chart(document.getElementById('testChart').getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: data.test_evaluation.dates,
+                        datasets: [
+                            { 
+                                label: 'Actual Price', 
+                                data: data.test_evaluation.actual, 
+                                borderColor: '#9AA3B2', // Muted text color
+                                borderWidth: 2, 
+                                pointRadius: 0,
+                                pointHoverRadius: 4,
+                                tension: 0.1
+                            },
+                            { 
+                                label: 'Predicted Price', 
+                                data: data.test_evaluation.predicted, 
+                                borderColor: '#F43F5E', // Rose
+                                borderWidth: 2, 
+                                pointRadius: 0,
+                                pointHoverRadius: 4,
+                                tension: 0.1
+                            }
+                        ]
+                    },
+                    options: {
+                        ...commonOptions,
+                        plugins: {
+                            ...commonOptions.plugins,
+                            legend: { display: true, position: 'top', labels: { usePointStyle: true, boxWidth: 8 } }
+                        }
+                    }
+                });
+
+                // 3. 10-Day Forecast
+                new Chart(ctxFore, {
+                    type: 'line',
+                    data: {
+                        labels: data.forecast.dates,
+                        datasets: [
+                            { 
+                                label: 'Forecasted Price', 
+                                data: data.forecast.predicted, 
+                                borderColor: '#6366F1', // Indigo
+                                backgroundColor: gradFore,
+                                borderWidth: 3, 
+                                pointRadius: 4, 
+                                pointBackgroundColor: '#0B0D10',
+                                pointBorderColor: '#6366F1',
+                                pointBorderWidth: 2,
+                                pointHoverRadius: 6,
+                                fill: true,
+                                tension: 0.2
+                            }
+                        ]
+                    },
+                    options: commonOptions
+                });
+
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                const loader = document.getElementById('loading-overlay');
+                loader.innerHTML = `
+                    <div class="text-center p-6 bg-surface border border-red-500/30 rounded-xl max-w-sm">
+                        <svg class="w-10 h-10 text-red-500 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <h3 class="text-textPri font-semibold mb-1">Connection Failed</h3>
+                        <p class="text-textSec text-sm">Make sure your Python backend is running on port 5000.</p>
+                    </div>`;
+            }
+        }
+
+        // Run the function when the page loads
+        fetchAndRenderData();
+    </script>
+</body>
+</html>
